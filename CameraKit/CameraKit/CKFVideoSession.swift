@@ -107,24 +107,30 @@ extension CKFSession.FlashMode {
     var recordCallback: (URL) -> Void = { (_) in }
     var errorCallback: (Error) -> Void = { (_) in }
     
-    @objc public func record(url: URL? = nil, _ callback: @escaping (URL) -> Void, error: @escaping (Error) -> Void) {
-        if self.isRecording { return }
+    @objc public func record(url: URL? = nil, _ callback: @escaping (URL) -> Void, error: @escaping (Error) -> Void, isFront:Bool = true) {
         
+        if self.isRecording { return }
         self.recordCallback = callback
         self.errorCallback = error
-        
         let fileUrl: URL = url ?? {
             let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
             let fileUrl = paths[0].appendingPathComponent("output.mov")
             try? FileManager.default.removeItem(at: fileUrl)
+            
             return fileUrl
+            
         }()
-        
         if let connection = self.movieOutput.connection(with: .video) {
             connection.videoOrientation = UIDevice.current.orientation.videoOrientation
+            connection.isVideoMirrored = isFront
         }
         
-        self.movieOutput.startRecording(to: fileUrl, recordingDelegate: self)
+        // delay added to skip the first dark frames
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            
+            self.movieOutput.startRecording(to: fileUrl, recordingDelegate: self)
+        }
+        
     }
     
     @objc public func stopRecording() {
